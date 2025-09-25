@@ -7,7 +7,7 @@ const Plant = () => {
     { id: 3, src: "/plants.png" },
   ];
 
-  const price = "199 Rupees";
+  const price = "₹199";
 
   return (
     <div className="w-[90%] mx-auto mt-24">

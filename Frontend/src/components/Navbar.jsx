@@ -32,7 +32,7 @@ const Navbar = () => {
         <div className="flex items-center justify-between px-8 py-4">
           {/* Logo */}
           <h1 className="text-white font-extrabold text-2xl tracking-wide">
-            Ruksha
+            Vruksha
           </h1>
 
           {/* Desktop Menu */}
