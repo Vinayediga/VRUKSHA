@@ -1,0 +1,82 @@
+[
+  {
+    "id": 1,
+    "name": "Peace Lily",
+    "type": "Flowering",
+    "difficulty": "Easy",
+    "value": "$$",
+    "price": "159 Rupees",
+    "imageURL": "/peacelily.jpg",
+    "maxPoints": 50
+  },
+  {
+    "id": 2,
+    "name": "Areca Palm",
+    "type": "Foliage",
+    "difficulty": "Medium",
+    "value": "$$",
+    "price": "199 Rupees",
+    "imageURL": "/Arecapalm.webp",
+    "maxPoints": 60
+  },
+  {
+    "id": 3,
+    "name": "Aloe Vera",
+    "type": "Succulents",
+    "difficulty": "Easy",
+    "value": "$",
+    "price": "99 Rupees",
+    "imageURL": "/AloveVera.jpeg",
+    "maxPoints": 40
+  },
+  {
+    "id": 4,
+    "name": "Jade Plant",
+    "type": "Succulents",
+    "difficulty": "Medium",
+    "value": "$$",
+    "price": "179 Rupees",
+    "imageURL": "/Jadeplant.webp",
+    "maxPoints": 55
+  },
+  {
+    "id": 5,
+    "name": "Snake Plant",
+    "type": "Foliage",
+    "difficulty": "Easy",
+    "value": "$",
+    "price": "129 Rupees",
+    "imageURL": "/Snakeplant.webp",
+    "maxPoints": 45
+  },
+  {
+    "id": 6,
+    "name": "Orchid",
+    "type": "Flowering",
+    "difficulty": "Hard",
+    "value": "$$$",
+    "price": "249 Rupees",
+    "imageURL": "/orchidPlant.webp",
+    "maxPoints": 70
+  },
+  {
+    "id": 7,
+    "name": "Money Plant",
+    "type": "Foliage",
+    "difficulty": "Easy",
+    "value": "$",
+    "price": "149 Rupees",
+    "imageURL": "/MoneyPlant.webp",
+    "maxPoints": 50
+  },
+  {
+    "id": 8,
+    "name": "Cactus",
+    "type": "Succulents",
+    "difficulty": "Hard",
+    "value": "$$",
+    "price": "189 Rupees",
+    "imageURL": "/cactus plant.webp",
+    "maxPoints": 65
+  }
+]

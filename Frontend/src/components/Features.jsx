@@ -1,6 +1,19 @@
 import React from 'react'
+import { useNavigate } from 'react-router-dom'
 
 const Features = () => {
+  const navigate = useNavigate()
+
+  const handleGetStarted = () => {
+    const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true'
+
+    if (isAuthenticated) {
+      navigate('/shop')
+    } else {
+      navigate('/signup')
+    }
+  }
+
   const features = [
     {
       icon: "🌱",
@@ -33,7 +46,10 @@ const Features = () => {
       </div>
 
       <div className="flex justify-center mt-12">
-        <button className="bg-green-600 px-8 py-3 text-white font-semibold rounded-full hover:bg-green-700 transition transform hover:scale-105">
+        <button
+          className="bg-green-600 px-8 py-3 text-white font-semibold rounded-full hover:bg-green-700 transition transform hover:scale-105"
+          onClick={handleGetStarted}
+        >
           Get Started
         </button>
       </div>

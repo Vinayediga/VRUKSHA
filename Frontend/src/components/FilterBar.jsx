@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useRef } from "react";
 import { ChevronDownIcon } from "@heroicons/react/24/solid";
 
-
 const filtersData = [
   { id: "plantType", label: "Plant Type", options: ["Flowering", "Foliage", "Succulents"] },
   { id: "difficulty", label: "Difficulty", options: ["Easy", "Medium", "Hard"] },
-  { id: "price", label: "Price", options: ["$", "$$", "$$$"] },
+  { id: "price", label: "Price", options: ["Below ₹150", "₹150 - ₹200", "Above ₹200"] },
+  { id: "points", label: "Points", options: ["Below 50", "50 - 60", "Above 60"] }, // 🆕 Added
 ];
 
-const FilterBar = () => {
+const FilterBar = ({ onFilterChange }) => {
   const [activeFilter, setActiveFilter] = useState(null);
   const [selectedOptions, setSelectedOptions] = useState({});
   const filterBarRef = useRef(null);
@@ -28,24 +28,32 @@ const FilterBar = () => {
   };
 
   const handleOptionClick = (filterId, option) => {
-    setSelectedOptions((prev) => ({
-      ...prev,
-      [filterId]: prev[filterId] === option ? null : option,
-    }));
+    setSelectedOptions((prev) => {
+      const newFilters = {
+        ...prev,
+        [filterId]: prev[filterId] === option ? null : option,
+      };
+      onFilterChange(newFilters);
+      return newFilters;
+    });
     setActiveFilter(null);
   };
 
-  const clearAllFilters = () => setSelectedOptions({});
+  const clearAllFilters = () => {
+    setSelectedOptions({});
+    onFilterChange({});
+  };
 
   const clearSingleFilter = (filterId, e) => {
     e.stopPropagation();
-    setSelectedOptions((prev) => ({
-      ...prev,
-      [filterId]: null,
-    }));
+    setSelectedOptions((prev) => {
+      const newFilters = { ...prev, [filterId]: null };
+      onFilterChange(newFilters);
+      return newFilters;
+    });
   };
 
-  const isFilterSelected = Object.values(selectedOptions).some(val => val !== null);
+  const isFilterSelected = Object.values(selectedOptions).some((val) => val !== null);
 
   return (
     <div ref={filterBarRef} className="w-[90%] mx-auto mt-2 text-center">
@@ -71,9 +79,9 @@ const FilterBar = () => {
                   ×
                 </span>
               )}
-           {!selectedOptions[filter.id] && (
-  <ChevronDownIcon className="w-4 h-4 ml-1 text-gray-600" />
-)}
+              {!selectedOptions[filter.id] && (
+                <ChevronDownIcon className="w-4 h-4 ml-1 text-gray-600" />
+              )}
             </button>
 
             {activeFilter === filter.id && (
@@ -92,7 +100,6 @@ const FilterBar = () => {
           </div>
         ))}
 
-        {/* Clear All button comes after filter buttons */}
         {isFilterSelected && (
           <button
             onClick={clearAllFilters}

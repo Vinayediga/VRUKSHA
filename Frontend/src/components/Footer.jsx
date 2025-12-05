@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react"
+import { NavLink } from "react-router-dom"
 
 const Footer = () => {
   const [scrolled, setScrolled] = useState(false)
@@ -12,7 +13,7 @@ const Footer = () => {
     return () => window.removeEventListener("scroll", handleScroll)
   }, [])
 
-  const navItems = ["Home", "Shop", "Leaderboard", "Dashboard"]
+  const navItems = [ "Shop", "Leaderboard", "Dashboard"]
 
   return (
     <footer
@@ -25,9 +26,15 @@ const Footer = () => {
 
         {/* Navigation links */}
         <ul className="flex gap-6 mb-4 md:mb-0">
+          <NavLink></NavLink>
           {navItems.map((item) => (
-            <li key={item} className="cursor-pointer hover:text-green-400 transition-colors duration-300">
-              {item}
+               <li key={item}>
+              <NavLink
+                to={`/${item.toLowerCase()}`}
+                className="cursor-pointer hover:text-green-400 transition-colors duration-300"
+              >
+                {item}
+              </NavLink>
             </li>
           ))}
         </ul>
