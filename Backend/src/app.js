@@ -1,6 +1,7 @@
 import express from "express"
 import cors from "cors"
 import cookieParser from "cookie-parser"
+import { ApiError } from "./utils/ApiError.js"
 
 
 
@@ -43,7 +44,52 @@ import userRouter from './routes/user.routes.js'
 
 app.use("/api/v1/users", userRouter)
 
+// 404 handler for undefined routes - MUST come before error handler
+app.use((req, res) => {
+  return res.status(404).json({
+    success: false,
+    message: `Route ${req.originalUrl} not found`,
+    errors: [],
+    data: null
+  });
+});
 
+// Global error handler middleware - MUST be the very last middleware
+// This MUST have 4 parameters (err, req, res, next) for Express to recognize it as an error handler
+app.use((err, req, res, next) => {
+  // Ensure we haven't already sent a response
+  if (res.headersSent) {
+    return next(err);
+  }
 
+  // Set default headers to JSON
+  res.setHeader('Content-Type', 'application/json');
+  
+  // Log the error for debugging
+  console.error("Error Handler Caught:", {
+    message: err.message,
+    statusCode: err.statusCode,
+    stack: err.stack
+  });
+  
+  // If it's an ApiError (has statusCode property), use its properties
+  if (err && err.statusCode) {
+    return res.status(err.statusCode).json({
+      success: false,
+      message: err.message || "Something went wrong",
+      errors: err.errors || [],
+      data: null
+    });
+  }
+
+  // For other errors, return a generic 500 error
+  console.error("Unhandled Error:", err);
+  return res.status(err.status || 500).json({
+    success: false,
+    message: err.message || "Internal server error",
+    errors: [],
+    data: null
+  });
+});
 
 export { app }

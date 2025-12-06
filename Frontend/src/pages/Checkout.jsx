@@ -5,6 +5,39 @@ import toast from "react-hot-toast";
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:8001/api/v1/users";
 
+// Helper function to safely parse JSON responses
+const parseJSONResponse = async (res) => {
+  const contentType = res.headers.get("content-type");
+  
+  if (contentType && contentType.includes("application/json")) {
+    return await res.json();
+  } else {
+    // If not JSON, try to extract error message from HTML
+    const text = await res.text();
+    console.error("Non-JSON response:", text);
+    
+    // Try to extract error message from HTML error page
+    // Match patterns like "Error: Coupon is already used or expired."
+    const errorMatch = text.match(/Error:\s*([^<\.]+(?:\.[^<]*)?)/i) || 
+                       text.match(/<pre>Error:\s*([^<]+)/i) ||
+                       text.match(/<pre>([^<]+)/i);
+    
+    let errorMessage = null;
+    if (errorMatch) {
+      errorMessage = errorMatch[1]
+        .replace(/<br\s*\/?>/gi, ' ')
+        .replace(/&nbsp;/g, ' ')
+        .trim();
+    }
+    
+    if (errorMessage) {
+      throw new Error(errorMessage);
+    }
+    
+    throw new Error(`Server error: ${res.status} ${res.statusText}`);
+  }
+};
+
 const CheckoutPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -91,7 +124,7 @@ const CheckoutPage = () => {
       body: JSON.stringify(payload),
     });
 
-    const data = await res.json();
+    const data = await parseJSONResponse(res);
     if (!res.ok) {
       throw new Error(data?.message || "Unable to record order.");
     }
@@ -121,7 +154,7 @@ const CheckoutPage = () => {
         }),
       });
 
-      const orderData = await orderRes.json();
+      const orderData = await parseJSONResponse(orderRes);
       if (!orderRes.ok) {
         throw new Error(orderData?.message || "Failed to create order.");
       }
@@ -150,7 +183,7 @@ const CheckoutPage = () => {
               body: JSON.stringify(response),
             });
 
-            const verifyData = await verifyRes.json();
+            const verifyData = await parseJSONResponse(verifyRes);
             if (!verifyRes.ok) {
               throw new Error(verifyData?.message || "Payment verification failed.");
             }
@@ -355,15 +388,26 @@ const CheckoutPage = () => {
                           },
                           body: JSON.stringify({ code: couponInput }),
                         });
-                        const data = await res.json();
+                        
+                        const data = await parseJSONResponse(res);
                         if (!res.ok) {
-                          throw new Error(data?.message || "Invalid coupon.");
+                          throw new Error(data?.message || `Invalid coupon (${res.status})`);
                         }
+                        
+                        if (!data.data) {
+                          throw new Error("Invalid response from server");
+                        }
+                        
                         setAppliedCoupon(data.data);
                         toast.success(`Coupon ${data.data.code} applied!`);
                       } catch (error) {
-                        console.error(error);
-                        toast.error(error.message || "Unable to apply coupon.");
+                        console.error("Coupon validation error:", error);
+                        // Check if it's a network error
+                        if (error.message.includes("Failed to fetch") || error.name === "TypeError") {
+                          toast.error("Cannot connect to server. Please check if the backend is running on the correct port.");
+                        } else {
+                          toast.error(error.message || "Unable to apply coupon.");
+                        }
                       } finally {
                         setApplyingCoupon(false);
                       }

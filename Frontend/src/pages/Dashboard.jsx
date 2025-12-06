@@ -6,6 +6,38 @@ import UploadPopup from "../components/UploadPopup";
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:8001/api/v1/users";
 
+// Helper function to safely parse JSON responses
+const parseJSONResponse = async (res) => {
+  const contentType = res.headers.get("content-type");
+  
+  if (contentType && contentType.includes("application/json")) {
+    return await res.json();
+  } else {
+    // If not JSON, try to extract error message from HTML
+    const text = await res.text();
+    console.error("Non-JSON response:", text);
+    
+    // Try to extract error message from HTML error page
+    const errorMatch = text.match(/Error:\s*([^<\.]+(?:\.[^<]*)?)/i) || 
+                       text.match(/<pre>Error:\s*([^<]+)/i) ||
+                       text.match(/<pre>([^<]+)/i);
+    
+    let errorMessage = null;
+    if (errorMatch) {
+      errorMessage = errorMatch[1]
+        .replace(/<br\s*\/?>/gi, ' ')
+        .replace(/&nbsp;/g, ' ')
+        .trim();
+    }
+    
+    if (errorMessage) {
+      throw new Error(errorMessage);
+    }
+    
+    throw new Error(`Server error: ${res.status} ${res.statusText}`);
+  }
+};
+
 const DashboardContent = () => {
   const plants = [
     { id: 1, name: "Peace Lily", type: "Flowering", difficulty: "Easy", price: "159", maxPoints: 80, imageURL: "/peacelily.jpg" },
@@ -21,17 +53,36 @@ const DashboardContent = () => {
   const fetchRewards = async () => {
     try {
       setLoadingRewards(true);
+      
+      // Add timeout to fetch request
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
       const res = await fetch(`${API_BASE_URL}/rewards/summary`, {
         credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        signal: controller.signal,
       });
-      const data = await res.json();
+      
+      clearTimeout(timeoutId);
+      const data = await parseJSONResponse(res);
       if (!res.ok) {
         throw new Error(data?.message || "Unable to load reward summary.");
       }
+      console.log("Reward summary received:", data.data);
       setRewardSummary(data.data);
     } catch (error) {
-      console.error(error);
-      toast.error(error.message || "Failed to load rewards.");
+      console.error("Fetch rewards error:", error);
+      // Check if it's a network error
+      if (error.name === "AbortError") {
+        toast.error("Request timed out. Please check your connection and try again.");
+      } else if (error.message.includes("Failed to fetch") || error.name === "TypeError") {
+        toast.error(`Cannot connect to server at ${API_BASE_URL}. Please check if the backend is running on port 8001.`);
+      } else {
+        toast.error(error.message || "Failed to load rewards.");
+      }
     } finally {
       setLoadingRewards(false);
     }
@@ -42,8 +93,18 @@ const DashboardContent = () => {
   }, []);
 
   const handleClaimCoupon = async (rewardId) => {
+    console.log("Claim button clicked for rewardId:", rewardId);
+    
+    if (!rewardId) {
+      console.error("No rewardId provided");
+      toast.error("Invalid reward selection.");
+      return;
+    }
+
     try {
       setClaimingReward(rewardId);
+      console.log("Making request to:", `${API_BASE_URL}/rewards/claim`);
+      
       const res = await fetch(`${API_BASE_URL}/rewards/claim`, {
         method: "POST",
         credentials: "include",
@@ -52,20 +113,27 @@ const DashboardContent = () => {
         },
         body: JSON.stringify({ rewardId }),
       });
-      const data = await res.json();
+      
+      console.log("Response status:", res.status, res.statusText);
+      
+      const data = await parseJSONResponse(res);
+      console.log("Response data:", data);
+      
       if (!res.ok) {
         throw new Error(data?.message || "Unable to claim coupon.");
       }
-      toast.success("Coupon generated!");
-      setRewardSummary((prev) => ({
-        ...(prev || {}),
-        ...data.data.summary,
-        coupons: [data.data.coupon, ...(prev?.coupons || [])],
-        catalog: prev?.catalog || [],
-      }));
+      
+      if (!data.data || !data.data.coupon) {
+        throw new Error("Invalid response from server");
+      }
+      
+      toast.success(`Coupon "${data.data.coupon.code}" generated successfully!`);
+      
+      // Refresh the reward summary
+      await fetchRewards();
     } catch (error) {
-      console.error(error);
-      toast.error(error.message || "Unable to claim coupon.");
+      console.error("Claim coupon error:", error);
+      toast.error(error.message || "Unable to claim coupon. Please check your available points.");
     } finally {
       setClaimingReward(null);
     }
@@ -120,21 +188,54 @@ const DashboardContent = () => {
           </h3>
           <div className="flex flex-wrap gap-4">
             {(rewardSummary?.catalog || []).map((option) => {
-              const disabled =
-                (rewardSummary?.availablePoints ?? 0) < option.pointsCost ||
-                claimingReward === option.id;
+              const availablePoints = rewardSummary?.availablePoints ?? 0;
+              const hasEnoughPoints = availablePoints >= option.pointsCost;
+              const isClaiming = claimingReward === option.id;
+              
+              console.log("Button render:", {
+                optionId: option.id,
+                availablePoints,
+                requiredPoints: option.pointsCost,
+                hasEnoughPoints,
+                isClaiming
+              });
+              
               return (
                 <button
                   key={option.id}
-                  onClick={() => handleClaimCoupon(option.id)}
-                  disabled={disabled}
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log("Button clicked:", option.id, "hasEnoughPoints:", hasEnoughPoints);
+                    
+                    if (!hasEnoughPoints) {
+                      toast.error(`You need ${option.pointsCost} points but only have ${availablePoints} points.`);
+                      return;
+                    }
+                    
+                    if (isClaiming) {
+                      return;
+                    }
+                    
+                    handleClaimCoupon(option.id);
+                  }}
+                  disabled={isClaiming}
+                  style={{ pointerEvents: isClaiming ? 'none' : 'auto' }}
                   className={`px-5 py-3 rounded-xl border font-semibold transition ${
-                    disabled
-                      ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-                      : "bg-[#7BB61A] text-white hover:bg-[#6ba014]"
+                    !hasEnoughPoints
+                      ? "bg-gray-200 text-gray-500 cursor-not-allowed opacity-60"
+                      : isClaiming
+                      ? "bg-gray-400 text-white cursor-wait"
+                      : "bg-[#7BB61A] text-white hover:bg-[#6ba014] cursor-pointer active:scale-95"
                   }`}
                 >
-                  {option.label} ({option.pointsCost} pts)
+                  {isClaiming 
+                    ? "Claiming..." 
+                    : !hasEnoughPoints
+                    ? `${option.label} (Need ${option.pointsCost} pts)`
+                    : `${option.label} (${option.pointsCost} pts)`
+                  }
                 </button>
               );
             })}
@@ -146,6 +247,13 @@ const DashboardContent = () => {
               </p>
             )}
           </div>
+          {/* Debug info */}
+          {rewardSummary && (
+            <div className="mt-4 text-xs text-gray-400">
+              Debug: Available Points = {rewardSummary.availablePoints ?? 0}, 
+              Catalog Items = {(rewardSummary.catalog || []).length}
+            </div>
+          )}
         </div>
 
         {/* Coupon list */}
